@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Şirket Büyüme Takibi – Market Cap & Earnings (önceki yıla göre)</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --text:#16191d; --muted:#667085; --line:#e4e7ec;
+    --good:#0a7d3c; --good-bg:#e3f5ea; --bad:#b42318; --bad-bg:#fde8e6;
+    --accent:#2457d6; --accent-bg:#e8eefc; --warn-bg:#fff4d6; --warn:#8a5a00;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0f1216; --card:#171b21; --text:#e8eaed; --muted:#98a2b3; --line:#2a313a;
+      --good:#4ade80; --good-bg:#12321f; --bad:#ff8a80; --bad-bg:#3a1714;
+      --accent:#8ab4ff; --accent-bg:#1b2842; --warn-bg:#3a2e10; --warn:#f6c453;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px 8px}
+  h1{margin:0 0 4px;font-size:22px}
+  .sub{color:var(--muted);margin:0}
+  main{padding:0 24px 40px;max-width:1500px;margin:0 auto}
+  .tabs{display:flex;gap:8px;margin:16px 0 12px}
+  .tab{border:1px solid var(--line);background:var(--card);color:var(--text);padding:9px 18px;border-radius:999px;cursor:pointer;font-weight:600;font-size:14px}
+  .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+  .bar label{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  input,select,button{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+  button{cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  input[type=search]{min-width:200px}
+  #custom{min-width:260px}
+  .spacer{flex:1}
+  .progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:2px 0 6px}
+  .progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  #status{color:var(--muted);margin:4px 2px 10px;min-height:20px}
+  #status.err{color:var(--bad)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .stat .k{color:var(--muted);font-size:12px}
+  .stat .v{font-size:21px;font-weight:700;margin-top:2px}
+  .stat .s{color:var(--muted);font-size:12px}
+  .good{color:var(--good)} .bad{color:var(--bad)}
+  .wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:72vh}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:1100px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
+  th{position:sticky;top:0;background:var(--card);cursor:pointer;user-select:none;font-size:12px;color:var(--muted);z-index:1}
+  th:hover{color:var(--text)}
+  th.sorted::after{content:" ▲"} th.sorted.desc::after{content:" ▼"}
+  td.l,th.l{text-align:left}
+  tbody tr:hover{background:var(--accent-bg)}
+  .code{color:var(--muted);font-size:12px;margin-left:6px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+  .b-good{background:var(--good-bg);color:var(--good)}
+  .b-bad{background:var(--bad-bg);color:var(--bad)}
+  .b-new{background:var(--accent-bg);color:var(--accent)}
+  .b-out{background:var(--warn-bg);color:var(--warn)}
+  .b-na{color:var(--muted)}
+  details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:14px}
+  summary{cursor:pointer;font-weight:600}
+  pre{background:var(--bg);border:1px solid var(--line);padding:10px;border-radius:8px;overflow:auto;font-size:12px}
+  .note{color:var(--muted);font-size:12.5px;margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Şirket Büyüme Takibi</h1>
+  <p class="sub">Veri kaynağı: companiesmarketcap.com · Karşılaştırma: güncel değer ↔ bir önceki yılın sonu</p>
+</header>
+
+<main>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-marketcap" aria-selected="true" data-tab="marketcap">Market Cap</button>
+    <button class="tab" role="tab" id="tab-earnings" aria-selected="false" data-tab="earnings">Earnings</button>
+  </div>
+
+  <div class="bar">
+    <label>Göster
+      <select id="filter">
+        <option value="top500">İlk 500</option>
+        <option value="all">Tüm havuz</option>
+        <option value="gain">Artanlar</option>
+        <option value="loss">Düşenler</option>
+        <option value="entered">İlk 500'e girenler</option>
+        <option value="left">İlk 500'den çıkanlar</option>
+        <option value="negative">Zarar edenler (güncel)</option>
+      </select>
+    </label>
+    <input type="search" id="q" placeholder="Şirket / sembol / ülke ara…">
+    <span class="spacer"></span>
+    <button id="btnCsv">CSV indir</button>
+  </div>
+
+  <div id="status">Yükleniyor…</div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="wrap">
+    <table id="tbl">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <p class="note" id="foot"></p>
+
+  
+</main>
+
+<script>
+'use strict';
+const BASE = 'https://companiesmarketcap.com';
+const TABS = {
+  marketcap: {
+    label: 'Market Cap',
+    list: p => p === 1 ? `${BASE}/` : `${BASE}/page/${p}/`,
+    hist: slug => `${BASE}/${slug}/marketcap/`,
+    cur: 'Güncel piyasa değeri', prev: yr => `${yr} sonu piyasa değeri`
+  },
+  earnings: {
+    label: 'Earnings',
+    list: p => p === 1 ? `${BASE}/most-profitable-companies/` : `${BASE}/most-profitable-companies/page/${p}/`,
+    hist: slug => `${BASE}/${slug}/earnings/`,
+    cur: 'Güncel kâr (TTM)', prev: yr => `${yr} yıllık kâr`
+  }
+};
+const SKIP_SLUGS = new Set(['page','time-machine','total-marketcap','de','fr','eur','inr','gbp','cad','aud','nzd','hkd','sgd']);
+
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const state = {
+  tab: 'marketcap',
+  data: {},
+  sort: { marketcap: { key: 'rank', dir: 1 }, earnings: { key: 'rank', dir: 1 } },
+  preferred: 0,
+  running: null
+};
+
+/* ---------- Hesaplama ---------- */
+function compute(rows) {
+  rows.forEach(r => {
+    const ok = r.priorState === 'ok';
+    r.prior = ok ? r.priorVal : null;
+    r.diff = ok ? r.value - r.prior : null;
+    r.change = ok && r.prior !== 0 ? (r.value - r.prior) / Math.abs(r.prior) : null;
+    r.priorRank = null;
+  });
+  rows.filter(r => r.priorState === 'ok').sort((a, b) => b.prior - a.prior).forEach((r, i) => r.priorRank = i + 1);
+  rows.forEach(r => {
+    r.rankDelta = r.priorRank != null ? r.priorRank - r.rank : null;
+    r.edge = null;
+    if (r.rank <= 500 && (r.priorState === 'missing' || (r.priorRank != null && r.priorRank > 500))) r.edge = 'entered';
+    if (r.rank > 500 && r.priorRank != null && r.priorRank <= 500) r.edge = 'left';
+  });
+}
+function statusOf(r, tab) {
+  if (r.change == null && r.diff == null) return { t: '—', c: 'b-na' };
+  const up = r.diff >= 0, cls = up ? 'b-good' : 'b-bad';
+  if (tab === 'marketcap') return { t: up ? '▲ Değer kazandı' : '▼ Değer kaybetti', c: cls };
+  if (r.prior <= 0 && r.value > 0) return { t: '▲ Zarardan kâra', c: 'b-good' };
+  if (r.prior > 0 && r.value <= 0) return { t: '▼ Zarara geçti', c: 'b-bad' };
+  if (r.prior <= 0 && r.value <= 0) return up ? { t: '▲ Zarar azaldı', c: 'b-good' } : { t: '▼ Zarar arttı', c: 'b-bad' };
+  return up ? { t: '▲ Kâr arttı', c: 'b-good' } : { t: '▼ Kâr azaldı', c: 'b-bad' };
+}
+
+/* ---------- Biçimlendirme ---------- */
+const nf = (v, d = 2) => v.toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
+function money(v) {
+  if (v == null) return '—';
+  const a = Math.abs(v), s = v < 0 ? '-' : '';
+  if (a >= 1e12) return `${s}$${nf(a / 1e12)} T`;
+  if (a >= 1e9) return `${s}$${nf(a / 1e9)} B`;
+  if (a >= 1e6) return `${s}$${nf(a / 1e6)} M`;
+  return `${s}$${nf(a, 0)}`;
+}
+const pct = v => v == null ? '—' : `${v >= 0 ? '+' : ''}${nf(v * 100)}%`;
+const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+/* ---------- Arayüz ---------- */
+function columns(tab) {
+  const cols = [
+    ['rank', '#', ''], ['name', 'Şirket', 'l'], ['country', 'Ülke', 'l'],
+    ['value', TABS[tab].cur, ''], ['prior', TABS[tab].prev(new Date().getFullYear() - 1), ''],
+    ['diff', 'Fark', ''], ['change', 'Değişim %', ''], ['status', 'Durum', 'l']
+  ];
+  if (tab === 'earnings') cols.push(['sign', 'Kâr/Zarar', 'l']);
+  cols.push(['priorRank', 'Geçen yıl sıra*', ''], ['rankDelta', 'Sıra değişimi', ''], ['edge', 'İlk 500', 'l']);
+  return cols;
+}
+function sortVal(r, k, tab) {
+  switch (k) {
+    case 'status': return r.diff;
+    case 'sign': return r.value;
+    case 'edge': return r.edge === 'entered' ? 1 : r.edge === 'left' ? -1 : 0;
+    case 'name': case 'country': return (r[k] || '').toLowerCase();
+    default: return r[k];
+  }
+}
+function visibleRows(d, tab) {
+  const f = $('#filter').value, q = $('#q').value.trim().toLowerCase();
+  let rows = d.rows.filter(r => {
+    if (f === 'top500' && r.rank > 500) return false;
+    if (f !== 'all' && f !== 'top500') {
+      if (f === 'gain' && !(r.diff != null && r.diff >= 0 && r.rank <= 500)) return false;
+      if (f === 'loss' && !(r.diff != null && r.diff < 0 && r.rank <= 500)) return false;
+      if (f === 'entered' && r.edge !== 'entered') return false;
+      if (f === 'left' && r.edge !== 'left') return false;
+      if (f === 'negative' && !(r.value <= 0 && r.rank <= 500)) return false;
+    }
+    if (q && !(`${r.name} ${r.code} ${r.country}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const { key, dir } = state.sort[tab];
+  rows.sort((a, b) => {
+    const x = sortVal(a, key, tab), y = sortVal(b, key, tab);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1; if (y == null) return -1;
+    return (x < y ? -1 : x > y ? 1 : 0) * dir;
+  });
+  return rows;
+}
+function render() {
+  const tab = state.tab, d = state.data[tab];
+  const cols = columns(tab);
+  const { key, dir } = state.sort[tab];
+  $('#tbl thead').innerHTML = '<tr>' + cols.map(([k, t, c]) =>
+    `<th class="${c} ${k === key ? 'sorted' + (dir < 0 ? ' desc' : '') : ''}" data-k="${k}">${esc(t)}</th>`).join('') + '</tr>';
+  if (!d) { $('#tbl tbody').innerHTML = ''; $('#cards').innerHTML = ''; $('#foot').textContent = ''; return; }
+  compute(d.rows);
+  const top = d.rows.filter(r => r.rank <= 500);
+  const okRows = top.filter(r => r.diff != null);
+  const gain = okRows.filter(r => r.diff >= 0).length, loss = okRows.length - gain;
+  const sumNow = okRows.reduce((s, r) => s + r.value, 0), sumPrev = okRows.reduce((s, r) => s + r.prior, 0);
+  const tot = sumPrev ? (sumNow - sumPrev) / Math.abs(sumPrev) : null;
+  const med = median(okRows.filter(r => r.change != null).map(r => r.change));
+  const entered = d.rows.filter(r => r.edge === 'entered').length, left = d.rows.filter(r => r.edge === 'left').length;
+  const negNow = top.filter(r => r.value <= 0).length;
+  const card = (k, v, s = '', cls = '') => `<div class="stat"><div class="k">${esc(k)}</div><div class="v ${cls}">${v}</div><div class="s">${s}</div></div>`;
+  $('#cards').innerHTML =
+    card(tab === 'marketcap' ? 'Değer kazanan' : 'Kârı artan', gain, `ilk 500 içinde (${okRows.length} şirket hesaplandı)`, 'good') +
+    card(tab === 'marketcap' ? 'Değer kaybeden' : 'Kârı azalan', loss, 'ilk 500 içinde', 'bad') +
+    card('Toplam değişim', pct(tot), `${money(sumPrev)} → ${money(sumNow)}`, tot == null ? '' : tot >= 0 ? 'good' : 'bad') +
+    card('Medyan değişim', pct(med), 'şirket başına', med == null ? '' : med >= 0 ? 'good' : 'bad') +
+    card("İlk 500'e girenler", entered, 'geçen yıl sonunda 500 dışındaydı / verisi yoktu') +
+    card("İlk 500'den çıkanlar", left, 'geçen yıl ilk 500\'deydi, şimdi dışında') +
+    (tab === 'earnings' ? card('Zarar eden (güncel)', negNow, 'ilk 500 içinde', negNow ? 'bad' : '') : '');
+  const rows = visibleRows(d, tab);
+  $('#tbl tbody').innerHTML = rows.map(r => {
+    const st = statusOf(r, tab);
+    const cc = r.diff == null ? '' : r.diff >= 0 ? 'good' : 'bad';
+    const rd = r.rankDelta == null ? (r.priorState === 'missing' ? 'Yeni' : '—') : r.rankDelta > 0 ? `▲ ${r.rankDelta}` : r.rankDelta < 0 ? `▼ ${-r.rankDelta}` : '=';
+    const rdc = r.rankDelta == null ? '' : r.rankDelta > 0 ? 'good' : r.rankDelta < 0 ? 'bad' : '';
+    const edge = r.edge === 'entered' ? '<span class="badge b-new">Yeni girdi</span>' : r.edge === 'left' ? '<span class="badge b-out">Çıktı</span>' : '';
+    const sign = tab === 'earnings' ? `<td class="l"><span class="badge ${r.value > 0 ? 'b-good' : 'b-bad'}">${r.value > 0 ? 'Kâr' : 'Zarar'}</span></td>` : '';
+    return `<tr>
+      <td>${r.rank ?? ''}</td>
+      <td class="l"><a href="${BASE}/${esc(r.slug)}/${tab}/" target="_blank" rel="noopener">${esc(r.name)}</a><span class="code">${esc(r.code)}</span></td>
+      <td class="l">${esc(r.country)}</td>
+      <td>${money(r.value)}</td>
+      <td>${r.priorState === 'pending' ? '…' : r.priorState === 'error' ? 'hata' : money(r.prior)}</td>
+      <td class="${cc}">${r.diff == null ? '—' : (r.diff >= 0 ? '+' : '') + money(r.diff)}</td>
+      <td class="${cc}">${pct(r.change)}</td>
+      <td class="l"><span class="badge ${st.c}">${st.t}</span></td>
+      ${sign}
+      <td>${r.priorRank ?? '—'}</td>
+      <td class="${rdc}">${rd}</td>
+      <td class="l">${edge}</td></tr>`;
+  }).join('');
+  const yr = d.year;
+  $('#foot').innerHTML =
+    `Güncel değer: sitenin anlık listesi${tab === 'earnings' ? ' (TTM)' : ''}. Önceki yıl: şirketin yıllık tablosundaki <b>${yr - 1}</b> satırı. ` +
+    `<br>*Geçen yıl sırası, çekilen havuz (${d.rows.length} şirket) içindeki ${yr - 1} değerlerine göre tahmin edilir; havuz dışına düşmüş şirketler hesaba katılmadığı için “yeni girdi” sayısı biraz fazla çıkabilir. Havuzu büyütmek doğruluğu artırır.` +
+    (d.errors ? `<br><b class="bad">${d.errors} şirketin önceki yıl verisi alınamadı</b> (tabloda “hata”). update_data.py'yi tekrar çalıştırın; başarılı olanlar önbellekten gelir.` : '');
+}
+function setStatus(msg, err = false) { const s = $('#status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+
+
+function toCsv() {
+  const tab = state.tab, d = state.data[tab]; if (!d) return;
+  const rows = visibleRows(d, tab);
+  const head = ['Sıra','Şirket','Sembol','Ülke','Güncel değer (USD)',`${d.year - 1} değeri (USD)`,'Fark (USD)','Değişim %','Durum','Geçen yıl sıra (tahmini)','Sıra değişimi','İlk 500'];
+  const line = a => a.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';');
+  const body = rows.map(r => line([r.rank, r.name, r.code, r.country, r.value, r.prior, r.diff,
+    r.change == null ? '' : (r.change * 100).toFixed(2).replace('.', ','), statusOf(r, tab).t.replace(/^[▲▼] /, ''),
+    r.priorRank, r.rankDelta, r.edge === 'entered' ? 'Yeni girdi' : r.edge === 'left' ? 'Çıktı' : '']));
+  const blob = new Blob(['﻿' + [line(head), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `${tab}-buyume-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ---------- Olaylar ---------- */
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+  state.tab = b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', x === b));
+  showStatus(); render();
+}));
+$('#btnCsv').addEventListener('click', toCsv);
+$('#filter').addEventListener('change', render);
+$('#q').addEventListener('input', render);
+$('#tbl thead').addEventListener('click', e => {
+  const th = e.target.closest('th'); if (!th) return;
+  const s = state.sort[state.tab], k = th.dataset.k;
+  if (s.key === k) s.dir *= -1; else { s.key = k; s.dir = (k === 'name' || k === 'country' || k === 'rank' || k === 'priorRank') ? 1 : -1; }
+  render();
+});
+
+/* ---------- Gömülü veri (update_data.py doldurur) ---------- */
+const DATA = /*__DATA__*/null;
+function showStatus() {
+  const d = state.data[state.tab];
+  if (!d) { setStatus('Veri yok. update_data.py çalıştırılmamış.', true); return; }
+  setStatus(`${TABS[state.tab].label} · veri tarihi: ${new Date(DATA.updated).toLocaleString('tr-TR')} · ${d.rows.length} şirket${d.errors ? ' · ' + d.errors + ' şirketin önceki yıl verisi alınamadı' : ''}`);
+}
+if (DATA) {
+  for (const tab of ['marketcap', 'earnings']) {
+    const t = DATA.tabs[tab]; if (!t) continue;
+    t.rows.forEach(r => { r.priorState = r.priorState || 'error'; });
+    state.data[tab] = { rows: t.rows, year: DATA.year, errors: t.rows.filter(r => r.priorState === 'error').length };
+  }
+}
+showStatus();
+render();
+</script>
+</body>
+</html>
